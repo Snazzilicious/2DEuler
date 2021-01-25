@@ -2,16 +2,20 @@
 import numpy as np
 
 
-# ElemVertInds
-# VertCoords
-# if DIM == 2
-#c0s = VertCoords[ ElemVertInds[:,0], : ]
-#c1s = VertCoords[ ElemVertInds[:,1], : ]
-#c2s = VertCoords[ ElemVertInds[:,2], : ]
+nNodes = -1
+nElem = -1
 
-#Areas = getElemAreas(c0s, c1s, c2s)
+ElemVertInds = None
+VertCoords = None
+groupNames = None
+groupMembers = None
 
-#basisCoeffs = get2DBasisCoeffs(c0s, c1s, c2s) #[element, xyc, vertex]
+Areas = None
+c0s = None
+c1s = None
+c2s = None
+
+basisCoeffs = None #[element, xyc, vertex]
 
 # form stiffness matrix
 
@@ -21,47 +25,71 @@ import numpy as np
 
 def parseMesh(filename):
 #filename = "FullCircle.su2"
+
+	global nNodes
+	global nElem
+	global ElemVertInds
+	global VertCoords
+	global Areas
+	global c0s
+	global c1s
+	global c2s
+	global basisCoeffs
+	global groupNames
+	global groupMembers
+
 	meshFile = open(filename,'r')
 	
 	#chop first line
 	line = meshFile.readline()
-	
+
 	#get how many elements there are
 	line = meshFile.readline().split()
 	nElem = int(line[-1])
-	
+
 	#get indices of element vertices
 	ElemVertInds = np.zeros([nElem,3]).astype(int)
 	for i in range(nElem):
 		line = meshFile.readline().split()
 		for j in range(3):
 			ElemVertInds[i,j] = int(line[j+1])
-	
-	
+
+
 	#get how many vertices there are
 	line = meshFile.readline().split()
 	nNodes = int(line[-1])
-	
+
 	#get indices of cell vertices
 	VertCoords = np.zeros([nNodes,2])
 	for i in range(nNodes):
 		line = meshFile.readline().split()
 		for j in range(2):
-			cellVertexCoords[i,j] = float(line[j])
+			VertCoords[i,j] = float(line[j])
 
-	# TODO
-#	makeGridFile(ElemVertInds,VertCoords,"meshFile.vtk")
+
+	# remove unconnected nodes
+	fromInd = []
+	for i in range(nNodes):
+		if i in ElemVertInds:
+			fromInd.append(i)
+			ElemVertInds[ElemVertInds == i] = len(fromInd)-1
+	VertCoords = VertCoords[fromInd,:]
+	nNodes = VertCoords.shape[0]
+	
+	# PRINT VTK MESHFILE
+	makeGridFile(ElemVertInds,VertCoords,"meshFile.vtk")
+
 
 	#get how many groups there are
 	line = meshFile.readline().split()
 	nGroups = int(line[-1])
-	
-	
+
+
 	groupSizes = np.zeros(nGroups).astype(int)
 	groupNames = ["" for _ in range(nGroups)]
 	groupMembers = [[] for _ in range(nGroups)]
-	
-	for i in range(numGroups):
+
+	for i in range(nGroups):
 		#get group name
 		line = meshFile.readline().split()
 		groupNames[i] = line[-1]
@@ -75,11 +103,96 @@ def parseMesh(filename):
 				ind = int(line[-(1+k)])
 				if ind not in groupMembers[i]:
 					groupMembers[i].append(ind)
-			
+		
 
 	meshFile.close()
+	
+	# Computing element properties
+	c0s = VertCoords[ ElemVertInds[:,0], : ]
+	c1s = VertCoords[ ElemVertInds[:,1], : ]
+	c2s = VertCoords[ ElemVertInds[:,2], : ]
+	
+	Areas = getElemAreas(c0s, c1s, c2s)
+	
+	basisCoeffs = get2DBasisCoeffs(c0s, c1s, c2s) #[element, xyc, vertex]
 
 
+def makeGridFile(vertexIndices, vertexCoords, filename):
+	numVertices = vertexCoords.shape[0]
+	numCells = vertexIndices.shape[0]
+	
+	vertices3D = np.zeros([numVertices,3])
+	vertices3D[:,:2] = vertexCoords[:,:]
+	
+	cellData = 3*np.ones([numCells,4]).astype(int)
+	cellData[:,1:] = vertexIndices[:,:]
+	
+	f = open(filename,'w')
+	
+	#header
+	f.write("# vtk DataFile Version 3.0\nvtk output\nASCII\nDATASET UNSTRUCTURED_GRID\n")
+	
+	#print coordinates of vertices
+	f.write("POINTS " + str(numVertices) + " float\n")
+	for i in range(numVertices):
+		f.write(str(vertices3D[i,0]) + " " + str(vertices3D[i,1]) + " " + str(vertices3D[i,2]) + "\n" )
+
+	
+	#print coordinates of vertices
+	f.write("CELLS " + str(numCells) + " " + str(4*numCells) + "\n")
+	for i in range(numCells):
+		f.write(str(cellData[i,0]) + " " + str(cellData[i,1]) + " " + str(cellData[i,2]) \
+				+ " " + str(cellData[i,3]) + "\n" )
+	
+	#cell types
+	f.write("CELL_TYPES " + str(numCells) + "\n")
+	for i in range(numCells):
+		f.write(str(5)+"\n")
+	
+	f.close()
+#END OF makeGridFile
+
+
+def printResults(rho,v1,v2,en, tag):
+	from FluxFunctions import pressure
+	
+	P = pressure(rho,en)
+	
+	
+	filename = "results.vtk." + str(tag)
+	f = open(filename,'w')
+	
+	
+	f.write( "POINT_DATA " + str(nNodes) + "\n" )
+	
+	#Scalar values
+	f.write("SCALARS rho float\nLOOKUP_TABLE default\n")
+	for i in range(nNodes):
+		f.write( str(rho[i]) + "\n" )
+
+
+	f.write("SCALARS e float\nLOOKUP_TABLE default\n")
+	for i in range(nNodes):
+		f.write(str(en[i]) + "\n")
+
+
+	f.write("SCALARS T float\nLOOKUP_TABLE default\n")
+	for i in range(nNodes):
+		f.write(str(en[i]/718.0) + "\n")
+
+	
+	f.write("SCALARS P float\nLOOKUP_TABLE default\n")
+	for i in range(nNodes):
+		f.write(str(P[i]) + "\n")
+
+	
+	#Vector values
+	f.write("VECTORS V float\n")
+	for i in range(nNodes):
+	
+		f.write(str(v1[i]) + " " + str(v2[i]) + " " + str(0.0) + "\n")
+	
+	f.close()
 
 
 def triArea(verts):
@@ -101,16 +214,17 @@ def getElemAreas(c0s, c1s, c2s):
 def get2DBasisCoeffs(c0s, c1s, c2s):
 	# Computing the coefficients for the basis functions
 	allMats = np.zeros([nElem,3,3])
-	allMats[:,:,0] = np.concatenate((c0s[:,0],c1s[:,0],c2s[:,0]),1)
-	allMats[:,:,1] = np.concatenate((c0s[:,1],c1s[:,1],c2s[:,1]),1)
+	allMats[:,:,0] = np.column_stack((c0s[:,0],c1s[:,0],c2s[:,0]))
+	allMats[:,:,1] = np.column_stack((c0s[:,1],c1s[:,1],c2s[:,1]))
 	allMats[:,:,2] = np.ones([nElem,3])
 
 	rhs = np.zeros([nElem,3,3])
-	for i in range(nElem):
-		rhs[i,:,:] = np.eye([3,3])
+	for i in range(3):
+		rhs[:,i,i] = 1.0
 	return np.linalg.solve(allMats, rhs) #[element, xyc, vertex]
 
 
+# VERIFIED UP TO HERE
 
 def subdivideTriangle(verts,levels):
 	# verts is 3 by 2
