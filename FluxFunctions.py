@@ -16,21 +16,19 @@ def pressure(rho,en):
 
 
 def gradP(rho,en):
-    global numCells
-    global gamma
+    numVerts = len(rho)
     
-    dP = np.array([(gamma-1)*en, np.zeros([numCells,3]), (gamma-1)*rho])
+    dP = np.array([(gamma-1)*en, np.zeros([numVerts,2]), (gamma-1)*rho])
     
     return dP
 
 
-def df123dU(rho,v1,v2,V3,en):
+def df123dU(rho,v1,v2,en):
 
     from scipy.sparse import coo_matrix
     
-    df1rho,df1v1,df1v2,df1V3,df1E,\
-        df2rho,df2v1,df2v2,df2V3,df2E,\
-            df3rho,df3v1,df3v2,df3V3,df3E = dfAll(rho,v1,v2,V3,en)
+    df1rho,df1v1,df1v2,df1E,\
+        df2rho,df2v1,df2v2,df2E = dfAll(rho,v1,v2,en)
     
 
     #number of entries in Jacobian = num vars (rho - e) squared 
@@ -88,95 +86,76 @@ def df123dU(rho,v1,v2,V3,en):
     
     df1dU = coo_matrix(vals1, (rows,cols), shape=(5*numCells, 5*numCells) )
     df2dU = coo_matrix(vals2, (rows,cols), shape=(5*numCells, 5*numCells) )
-    df3dU = coo_matrix(vals3, (rows,cols), shape=(5*numCells, 5*numCells) )
     
-    return df1dU, df2dU, df3dU
+    return df1dU, df2dU
 
 
 
 #This is not done
 def dfAll(rho,v1,v2,V3,en):
     global numCells
-    global gg
-    global gInv
 
     P = pressure(rho,en)
     dP = gradP(rho,en)
     
     allZero = np.zeros(numCells)
     
-    E = en + .5*(GR.crossFlowMag2(v1,v2,gg) + V3*V3 )
+    E = en + .5*( v1*v1 + v2*v2 )
     dE = np.array([allZero, allZero, allZero, V3, np.ones(numCells)]) + .5*GR.gradCrossFlowMag2(v1,v2,gg) 
     
     
     df1_rho = np.array([v1, rho, allZero, allZero, allZero])
     df1_v1 = np.array([v1*v1, 2*rho*v1, allZero, allZero, allZero ]) + gInv[1,1,:]*dP
     df1_v2 = np.array([v2*v1, rho*v2, rho*v1, allZero, allZero]) + gInv[2,1,:]*dP
-    df1_V3 = np.array([V3*v1, rho*V3, allZero, rho*v1, allZero])
     df1_E = np.array([allZero, (rho*E+P), allZero, allZero, allZero]) + v1*( [E, allZero, allZero, allZero, allZero] + rho*dE + dP )
     
     
     df2_rho = np.array([v2, allZero, rho, allZero, allZero])
     df2_v1 = np.array([v1*v2, rho*v2, rho*v1, allZero, allZero ]) + gInv[1,2,:]*dP
     df2_v2 = np.array([v2*v2, allZero, 2*rho*v2, allZero, allZero ]) + gInv[2,2,:]*dP
-    df2_V3 = np.array([V3*v2, allZero, rho*V3, rho*v2, allZero])
     df2_E = np.array([allZero, allZero, (rho*E+P), allZero, allZero]) + v2*( [E, allZero, allZero, allZero, allZero] + rho*dE + dP ) 
     
     
-    df3_rho = np.array([V3, allZero, allZero, rho, allZero])
-    df3_v1 = np.array([v1*V3, rho*V3, allZero, rho*v1, allZero ] )
-    df3_v2 = np.array([v2*V3, allZero, rho*V3, rho*v2, allZero ] )
-    df3_V3 = np.array([V3*V3, allZero, allZero, 2*rho*V3, allZero]) + dP
-    df3_E = np.array([ allZero, allZero, allZero, (rho*E+P), allZero]) + V3*( [E, allZero, allZero, allZero, allZero] + rho*dE + dP )
-    
-    return df1_rho,df1_v1,df1_v2,df1_V3,df1_E, df2_rho,df2_v1,df2_v2,df2_V3,df2_E, df3_rho,df3_v1,df3_v2,df3_V3,df3_E
+
+    return df1_rho,df1_v1,df1_v2,df1_E, df2_rho,df2_v1,df2_v2,df2_E
 
 
 
 
-def F123(rho,v1,v2,V3,en):
+def F123(rho,v1,v2,en):
 
-    f1_rho,f1_v1,f1_v2,f1_V3,f1_E,\
-        f2_rho,f2_v1,f2_v2,f2_V3,f2_E,\
-            f3_rho,f3_v1,f3_v2,f3_V3,f3_E = fAll(rho,v1,v2,V3,en)
+    f1_rho,f1_v1,f1_v2,f1_E,\
+        f2_rho,f2_v1,f2_v2,f2_E = fAll(rho,v1,v2,en)
     
 #    F1 = np.array([f1_rho, f1_v1, f1_v2, f1_V3, f1_E]).reshape(-1,1)
 #    F2 = np.array([f2_rho, f2_v1, f2_v2, f2_V3, f2_E]).reshape(-1,1)
 #    F3 = np.array([f3_rho, f3_v1, f3_v2, f3_V3, f3_E]).reshape(-1,1)
     
-    F1 = np.concat([f1_rho, f1_v1, f1_v2, f1_V3, f1_E], axis=0)
-    F2 = np.concat([f2_rho, f2_v1, f2_v2, f2_V3, f2_E], axis=0)
-    F3 = np.concat([f3_rho, f3_v1, f3_v2, f3_V3, f3_E], axis=0)
+    F1 = np.concat([f1_rho, f1_v1, f1_v2, f1_E], axis=0)
+    F2 = np.concat([f2_rho, f2_v1, f2_v2, f2_E], axis=0)
     
-    return F1, F2, F3
+    return F1, F2
 
 
 
-def fAll(rho,v1,v2,V3,en):
+def fAll(rho,v1,v2,en):
     
     P = pressure(rho,en)
     
-    E = en + .5*( GR.crossFlowMag2(v1,v2,GL.gg) + V3*V3 )
+    E = en + .5*( v1*v1 + v2*v2 )
 
     f1_rho = rho*v1
-    f1_v1 = rho*v1*v1 + GL.gInv[0,0,:]*P
-    f1_v2 = rho*v2*v1 + GL.gInv[1,0,:]*P
-    f1_V3 = rho*V3*v1
+    f1_v1 = rho*v1*v1 + P
+    f1_v2 = rho*v2*v1 + P
     f1_E = (rho*E + P)*v1 
     
     f2_rho = rho*v2
-    f2_v1 = rho*v1*v2 + GL.gInv[0,1,:]*P
-    f2_v2 = rho*v2*v2 + GL.gInv[1,1,:]*P
-    f2_V3 = rho*V3*v2
+    f2_v1 = rho*v1*v2 + P
+    f2_v2 = rho*v2*v2 + P
     f2_E = (rho*E + P)*v2 
     
-    f3_rho = rho*V3
-    f3_v1 = rho*v1*V3 
-    f3_v2 = rho*v2*V3 
-    f3_V3 = rho*V3*V3 + P
-    f3_E = (rho*E + P)*V3 
     
-    return f1_rho,f1_v1,f1_v2,f1_V3,f1_E, f2_rho,f2_v1,f2_v2,f2_V3,f2_E, f3_rho,f3_v1,f3_v2,f3_V3,f3_E
+    return f1_rho,f1_v1,f1_v2,f1_E, f2_rho,f2_v1,f2_v2,f2_E
 
 
 
