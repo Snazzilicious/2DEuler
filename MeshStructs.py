@@ -1,6 +1,7 @@
 
 import numpy as np
 
+DIMENSION = 2
 
 nNodes = -1
 nElem = -1
@@ -22,6 +23,9 @@ basisCoeffs = None #[element, xyc, vertex]
 # form mass matrix
 
 # form mixed matrix
+
+""" Mesh Loading Routines """
+
 
 def parseMesh(filename):
 #filename = "FullCircle.su2"
@@ -48,10 +52,10 @@ def parseMesh(filename):
 	nElem = int(line[-1])
 
 	#get indices of element vertices
-	ElemVertInds = np.zeros([nElem,3]).astype(int)
+	ElemVertInds = np.zeros([nElem,DIMENSION+1]).astype(int)
 	for i in range(nElem):
 		line = meshFile.readline().split()
-		for j in range(3):
+		for j in range(DIMENSION+1):
 			ElemVertInds[i,j] = int(line[j+1])
 
 
@@ -60,10 +64,10 @@ def parseMesh(filename):
 	nNodes = int(line[-1])
 
 	#get indices of cell vertices
-	VertCoords = np.zeros([nNodes,2])
+	VertCoords = np.zeros([nNodes,DIMENSION])
 	for i in range(nNodes):
 		line = meshFile.readline().split()
-		for j in range(2):
+		for j in range(DIMENSION):
 			VertCoords[i,j] = float(line[j])
 
 
@@ -223,8 +227,11 @@ def get2DBasisCoeffs(c0s, c1s, c2s):
 		rhs[:,i,i] = 1.0
 	return np.linalg.solve(allMats, rhs) #[element, xyc, vertex]
 
+""" End of Mesh Loading Routines """
 
-# VERIFIED UP TO HERE
+
+
+""" 2D integration Routines """
 
 def subdivideTriangle(verts,levels):
 	# verts is 3 by 2
@@ -257,19 +264,32 @@ def subdivideTriangle(verts,levels):
 	return prevList
 		
 
-def getIntegPtsWts(verts,levels):
+
+def getIntegPtsWt(verts,levels):
 	subTris = subdivideTriangle(verts,levels)
 	
 	evalPts = []
-	wghts = []
+	wght = triArea(subTris[0]) # all triangles will have the same weight
 	
 	for tri in subTris:
 		evalPts.append( np.mean(tri, axis=0) )
-		wghts.append( triArea(tri) )
+	
+	return np.array(evalPts), wght
 
-	return evalPts, wghts
 
+def integrateHatFunction(elem, vert, nlvls): # 2 levels should do it
+	# vert is 0, 1, or 2
+	coords = np.stack([c0s[elem,:],c1s[elem,:],c2s[elem,:]])
+	pts, w = getIntegPtsWt( coords, nlvls )
+	
+	return w*np.sum( intPts.dot(basisCoeffs[elem,:DIMENSION,0]) + basisCoeffs[elem,DIMENSION,vert] )
+	
+	
 
+# VERIFIED UP TO HERE
+""" End 2D Integration Routines """
+
+""" Sparse Matrix Construction Routines and Structures """
 
 def keyedList:
 	def __init__(self, ind=-1, content=[]):
@@ -286,13 +306,14 @@ def keyedValue:
 def getListKey(theList):
 	return theList.ind
 
-# list.sort(key=getValueKeyA)
+# list.sort(key=getValueKey)
 def getValueKey(theValue):
 	return theValue.ind
 
 
 def spMatBuilder:
 	def __init__(self):
+		self.dat=[]
 		
 	def addEntry(self,i,j,val):
 		
@@ -313,4 +334,81 @@ def spMatBuilder:
 					break
 		if not done:
 			self.dat.append( keyedList(i, [keyedValue(j,val)] ) )
+
+	def sort(self):
+		self.dat.sort(key=getListKey)
+		for row in range(len(self.dat)):
+			self.dat[row].sort(key=getValueKey)
+
+
+def makeStiffnessMatrix():
+	
+	builder = spMatBuilder()
+	
+	for elem in range(nElem):
+		for i in range(DIMENSION):
+			for j in range(DIMENSION):
+				vert1 = ElemVertInds[elem,i]
+				vert2 = ElemVertInds[elem,j]
+				# TODO consider normalizing gradients to emphasize averaging term, not true Laplacian
+				grad1 = basisCoeffs[vert1,:DIMENSION] 
+				grad2 = basisCoeffs[vert2,:DIMENSION]
+				
+				val = Areas[elem]*grad1.dot(grad2)
+				builder.addEntry(vert1,vert2,val)
+
+	builder.sort()
+	
+	return builder
+
+def makeMassMatrix():
+	
+	builder = spMatBuilder()
+	
+	for elem in range(nElem):
+		for i in range(DIMENSION):
+			for j in range(DIMENSION):
+				vert1 = ElemVertInds[elem,i]
+				vert2 = ElemVertInds[elem,j]
+				
+				val = 1.0
+				if vert1 == vert2:
+					val = 2.0
+				val = Areas[elem]*val/12.0
+				builder.addEntry(vert1,vert2,val)
+
+	builder.sort()
+	
+	return builder
+
+
+def makeMixedMatrices():
+	
+	builder1 = spMatBuilder()
+	builder2 = spMatBuilder()
+	
+	for elem in range(nElem):
+		for i in range(DIMENSION):
+			for j in range(DIMENSION):
+				vert1 = ElemVertInds[elem,i]
+				vert2 = ElemVertInds[elem,j]
+				
+				grad1 = basisCoeffs[vert1,:DIMENSION]
+				
+				val1 = Areas[elem]*grad1[0]/3.0
+				val2 = Areas[elem]*grad1[1]/3.0
+				
+				builder1.addEntry(vert1,vert2,val1)
+				builder2.addEntry(vert1,vert2,val2)
+
+	builder1.sort()
+	builder2.sort()
+	
+	return builder1, builder2
+
+""" End Sparse Matrix Construction Routines and Structures """
+
+
+
+
 

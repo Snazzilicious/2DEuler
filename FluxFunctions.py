@@ -131,8 +131,8 @@ def F123(rho,v1,v2,en):
 #    F2 = np.array([f2_rho, f2_v1, f2_v2, f2_V3, f2_E]).reshape(-1,1)
 #    F3 = np.array([f3_rho, f3_v1, f3_v2, f3_V3, f3_E]).reshape(-1,1)
     
-    F1 = np.concat([f1_rho, f1_v1, f1_v2, f1_E], axis=0)
-    F2 = np.concat([f2_rho, f2_v1, f2_v2, f2_E], axis=0)
+    F1 = np.concatenate([f1_rho, f1_v1, f1_v2, f1_E])
+    F2 = np.concatenate([f2_rho, f2_v1, f2_v2, f2_E])
     
     return F1, F2
 
