@@ -291,41 +291,53 @@ def integrateHatFunction(elem, vert, nlvls): # 2 levels should do it
 
 """ Sparse Matrix Construction Routines and Structures """
 
-def spMatBuilder:
+
+class spMatBuilder:
 	def __init__(self, N):
+		self.N = N
 		self.dat=[]
 		self.rowPtr=np.array([0 for _ in range(N+1)])
 		self.colInds = []
 		
 	def addEntry(self,i,j,val):
 		
-		done = False
-		# See if the indices already exits
-		for col in range(self.rowPtr[i],self.rowPtr[i+1]):
-			if self.colInds[col] == j:
-				self.dat[j] += val
-				done = True
-		if not done:
-			# see if should be the last column
-			if j > self.colInds[rowPtr[i+1]-1]:
-				self.colInds.insert(rowPtr[i+1],j)
-				self.dat.insert(rowPtr[i+1],val)
-			else:
-				for col in range(self.rowPtr[i], self.rowPtr[i+1]):
-					if j < self.colInds[col]:
-						self.colInds.insert(col,j)
-						self.dat.insert(col,val)
-						break
-			rowPtr[i+1:] += 1
+		if self.rowPtr[i] == self.rowPtr[i+1]:
+			self.colInds.insert(self.rowPtr[i],j)
+			self.dat.insert(self.rowPtr[i],val)
+			self.rowPtr[i+1:] += 1
+		else:
+		
+			done = False
+			# See if the indices already exits
+			for col in range(self.rowPtr[i],self.rowPtr[i+1]):
+				if self.colInds[col] == j:
+					self.dat[col] += val
+					done = True
+			if not done:
+				# see if should be the last column
+				if j > self.colInds[self.rowPtr[i+1]-1]:
+					self.colInds.insert(self.rowPtr[i+1],j)
+					self.dat.insert(self.rowPtr[i+1],val)
+				else:
+					for col in range(self.rowPtr[i], self.rowPtr[i+1]):
+						if j < self.colInds[col]:
+							self.colInds.insert(col,j)
+							self.dat.insert(col,val)
+							break
+				self.rowPtr[i+1:] += 1
+		
 			
-
 	def getDense(self):
 		res = np.zeros([self.N,self.N])
 		for row in range(self.N):
 			for j in range(self.rowPtr[row], self.rowPtr[row+1]):
 				res[ row, self.colInds[j] ] = self.dat[j]
-		
 		return res
+	
+	def getSparse(self):
+		from scipy.sparse import csr_matrix
+		return csr_matrix((self.dat,self.colInds,self.rowPtr), shape=(self.N,self.N))
+
 
 def makeStiffnessMatrix():
 	
