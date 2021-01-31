@@ -291,59 +291,45 @@ def integrateHatFunction(elem, vert, nlvls): # 2 levels should do it
 
 """ Sparse Matrix Construction Routines and Structures """
 
-def keyedList:
-	def __init__(self, ind=-1, content=[]):
-		self.ind = ind
-		self.content = content
-
-
-def keyedValue:
-	def __init__(self, ind=-1, val=0.0):
-		self.ind = ind
-		self.val = val
-
-# list.sort(key=getListKey)
-def getListKey(theList):
-	return theList.ind
-
-# list.sort(key=getValueKey)
-def getValueKey(theValue):
-	return theValue.ind
-
-
 def spMatBuilder:
-	def __init__(self):
+	def __init__(self, N):
 		self.dat=[]
+		self.rowPtr=np.array([0 for _ in range(N+1)])
+		self.colInds = []
 		
 	def addEntry(self,i,j,val):
 		
 		done = False
-		for row in range(len(self.dat)):
-			if self.dat[row].ind == i:
-				# See if the column index exits
-				for col in range(len(self.dat[row].content)):
-					# if it exist, add the value to the entry
-					if self.dat[row].content[col].ind == j:
-						self.dat[row].content[col].val += val
-						done = True
-						break
-				# if it doesn't exist, insert it
-				if not done:
-					self.dat[row].content.append( keyedValue(j,val) )
-					done = True
-					break
+		# See if the indices already exits
+		for col in range(self.rowPtr[i],self.rowPtr[i+1]):
+			if self.colInds[col] == j:
+				self.dat[j] += val
+				done = True
 		if not done:
-			self.dat.append( keyedList(i, [keyedValue(j,val)] ) )
+			# see if should be the last column
+			if j > self.colInds[rowPtr[i+1]-1]:
+				self.colInds.insert(rowPtr[i+1],j)
+				self.dat.insert(rowPtr[i+1],val)
+			else:
+				for col in range(self.rowPtr[i], self.rowPtr[i+1]):
+					if j < self.colInds[col]:
+						self.colInds.insert(col,j)
+						self.dat.insert(col,val)
+						break
+			rowPtr[i+1:] += 1
+			
 
-	def sort(self):
-		self.dat.sort(key=getListKey)
-		for row in range(len(self.dat)):
-			self.dat[row].sort(key=getValueKey)
-
+	def getDense(self):
+		res = np.zeros([self.N,self.N])
+		for row in range(self.N):
+			for j in range(self.rowPtr[row], self.rowPtr[row+1]):
+				res[ row, self.colInds[j] ] = self.dat[j]
+		
+		return res
 
 def makeStiffnessMatrix():
 	
-	builder = spMatBuilder()
+	builder = spMatBuilder(nNodes)
 	
 	for elem in range(nElem):
 		for i in range(DIMENSION):
@@ -363,7 +349,7 @@ def makeStiffnessMatrix():
 
 def makeMassMatrix():
 	
-	builder = spMatBuilder()
+	builder = spMatBuilder(nNodes)
 	
 	for elem in range(nElem):
 		for i in range(DIMENSION):
@@ -384,8 +370,8 @@ def makeMassMatrix():
 
 def makeMixedMatrices():
 	
-	builder1 = spMatBuilder()
-	builder2 = spMatBuilder()
+	builder1 = spMatBuilder(nNodes)
+	builder2 = spMatBuilder(nNodes)
 	
 	for elem in range(nElem):
 		for i in range(DIMENSION):
