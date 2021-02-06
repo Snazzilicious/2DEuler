@@ -18,6 +18,8 @@ c2s = None
 
 basisCoeffs = None #[element, xyc, vertex]
 
+bodyNodeNormals = None
+
 # form stiffness matrix
 
 # form mass matrix
@@ -100,13 +102,16 @@ def parseMesh(filename):
 		#get group size
 		line = meshFile.readline().split()
 		groupSizes[i] = int(line[-1])
-		#get group data - not storing
+		#get group data
 		for j in range(groupSizes[i]):
 			line = meshFile.readline().split()
 			for k in range(2):
 				ind = int(line[-(1+k)])
-				if ind not in groupMembers[i]:
-					groupMembers[i].append(ind)
+				if ind in fromInd:
+					ind = fromInd.index(ind)
+					
+					if ind not in groupMembers[i]:
+						groupMembers[i].append(ind)
 		
 
 	meshFile.close()
@@ -405,6 +410,93 @@ def makeMixedMatrices():
 	return builder1, builder2
 
 """ End Sparse Matrix Construction Routines and Structures """
+
+def bodyConnectivity():
+	GID = groupNames.index( 'Body' )
+
+	neighbors = -np.ones( [len(groupMembers[GID]), DIMENSION] )
+	
+	for j in range(len(groupMembers[GID])):
+		mmbr = groupMembers[GID][j]
+		nhbr = 0
+		elems = []
+		for i in range(DIMENSION+1):
+			elems.extend( np.where(ElemVertInds[:,i] == mmbr) )
+		
+		for elem in elems:
+			for i in range(DIMENSION+1):
+				if (ElemVertInds[elem,i] in groupMembers[GID]) and (ElemVertInds[elem,i] != mmbr) and (ElemVertInds[elem,i] != neighbors[j,0]) :
+					neighbors[j,nhbr] = ElemVertInds[elem,i]
+					nhbr += 1
+			if nhbr >= 2:
+				break
+	return neighbors
+
+
+def getBodyOutwardNormals():
+	global bodyNodeNormals
+
+	GID = groupNames.index( 'Body' )
+	
+	bodyNodeNormals = np.zeros([len(groupMembers[GID]),DIMENSION])
+	
+	normal = np.zeros([2])
+	
+	for elem in range(nElem):
+		# see which nodes belong to the body
+		bodyNodes = [ ElemVertInds[elem,i] in groupMembers[GID] for i in range(DIMENSION+1) ]
+		
+		# if a face of the element is a piece of the body
+		if np.sum(bodyNodes) == DIMENSION:
+			notBodyNodes = [not val for val in bodyNodes]
+		
+			nodeCoords = VertCoords[ ElemVertInds[elem,bodyNodes], : ]
+			
+			tangent = nodeCoords[1,:] - nodeCoords[0,:]
+			outward = VertCoords[ ElemVertInds[elem,notBodyNodes], : ] - nodeCoords[0,:]
+			
+			# Compute normal direction and scale to unit vector
+			normal[0] = tangent[1]
+			normal[1] = -tangent[0]
+			# Make sure is outward
+			normal *= np.sign( outward.dot(normal) )
+
+			
+			globalInds = ElemVertInds[elem,bodyNodes]
+			for ind in globalInds:
+				groupInd = groupMembers[GID].index(ind)
+				bodyNodeNormals[groupInd,:] += normal
+	
+	# Take the average and normalize		
+	bodyNodeNormals /= 2.0
+	bodyNodeNormals /= np.sqrt(np.sum(bodyNodeNormals**2,1)).reshape([-1,1])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
