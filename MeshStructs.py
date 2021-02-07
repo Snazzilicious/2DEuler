@@ -30,7 +30,7 @@ bodyNodeNormals = None
 
 
 def parseMesh(filename):
-#filename = "FullCircle.su2"
+
 
 	global nNodes
 	global nElem
@@ -107,7 +107,7 @@ def parseMesh(filename):
 			line = meshFile.readline().split()
 			for k in range(2):
 				ind = int(line[-(1+k)])
-				if ind in fromInd:
+				if ind in fromInd: # must adjust for deleted nodes
 					ind = fromInd.index(ind)
 					
 					if ind not in groupMembers[i]:
@@ -124,6 +124,9 @@ def parseMesh(filename):
 	Areas = getElemAreas(c0s, c1s, c2s)
 	
 	basisCoeffs = get2DBasisCoeffs(c0s, c1s, c2s) #[element, xyc, vertex]
+	
+	getBodyOutwardNormals()
+# END PARSEMESH
 
 
 def makeGridFile(vertexIndices, vertexCoords, filename):
@@ -291,7 +294,6 @@ def integrateHatFunction(elem, vert, nlvls): # 2 levels should do it
 	
 	
 
-# VERIFIED UP TO HERE
 """ End 2D Integration Routines """
 
 """ Sparse Matrix Construction Routines and Structures """
@@ -343,6 +345,8 @@ class spMatBuilder:
 		from scipy.sparse import csr_matrix
 		return csr_matrix((self.dat,self.colInds,self.rowPtr), shape=(self.N,self.N))
 
+
+# VERIFIED UP TO HERE
 
 def makeStiffnessMatrix():
 	
