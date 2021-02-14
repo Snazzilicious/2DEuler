@@ -424,6 +424,43 @@ def makeMixedMatrices():
 				builder1.addEntry(vert1,vert2,val1)
 				builder2.addEntry(vert1,vert2,val2)
 
+	# Boundary terms at the surface of the object
+	GID = groupNames.index( 'Body' )	
+	normal = np.zeros([2])
+	for elem in range(nElem):
+		# see which nodes belong to the body
+		bodyNodes = [ ElemVertInds[elem,i] in groupMembers[GID] for i in range(DIMENSION+1) ]
+		
+		# if a face of the element is a piece of the body
+		if np.sum(bodyNodes) == DIMENSION:
+			notBodyNodes = [not val for val in bodyNodes]
+		
+			vert1 = ElemVertInds[elem,bodyNodes][0]
+			vert2 = ElemVertInds[elem,bodyNodes][1]
+			nodeCoords = VertCoords[ ElemVertInds[elem,bodyNodes], : ]
+			
+			tangent = nodeCoords[1,:] - nodeCoords[0,:]
+			dist = np.linalg.norm(tangent)
+			
+			outward = VertCoords[ ElemVertInds[elem,notBodyNodes], : ] - nodeCoords[0,:]
+			
+			# Compute normal direction and scale to unit vector
+			normal[0] = tangent[1]
+			normal[1] = -tangent[0]
+			# Make sure is inward and unit
+			normal *= -np.sign( outward.dot(normal) )
+			normal /= np.linalg.norm(normal)
+			
+			builder1.addEntry(vert1,vert1, -(normal[0]*dist)/3.0 )
+			builder1.addEntry(vert2,vert2, -(normal[0]*dist)/3.0 )
+			builder1.addEntry(vert1,vert2, -(normal[0]*dist)/6.0 )
+			builder1.addEntry(vert2,vert1, -(normal[0]*dist)/6.0 )
+			
+			builder2.addEntry(vert1,vert1, -(normal[1]*dist)/3.0 )
+			builder2.addEntry(vert2,vert2, -(normal[1]*dist)/3.0 )
+			builder2.addEntry(vert1,vert2, -(normal[1]*dist)/6.0 )
+			builder2.addEntry(vert2,vert1, -(normal[1]*dist)/6.0 )
+
 	
 	return builder1, builder2
 
