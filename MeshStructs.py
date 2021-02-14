@@ -303,7 +303,7 @@ class spMatBuilder:
 	def __init__(self, N):
 		self.N = N
 		self.dat=[]
-		self.rowPtr=np.array([0 for _ in range(N+1)])
+		self.rowPtr=np.zeros(N+1).astype(int)
 		self.colInds = []
 		
 	def addEntry(self,i,j,val):
@@ -333,7 +333,7 @@ class spMatBuilder:
 							break
 				self.rowPtr[i+1:] += 1
 		
-			
+	
 	def getDense(self):
 		res = np.zeros([self.N,self.N])
 		for row in range(self.N):
@@ -344,6 +344,24 @@ class spMatBuilder:
 	def getSparse(self):
 		from scipy.sparse import csr_matrix
 		return csr_matrix((self.dat,self.colInds,self.rowPtr), shape=(self.N,self.N))
+	
+	def getFullSparse(self):
+		# 4 is b/c 4 variables
+		from scipy.sparse import csr_matrix
+		nnz = len(self.dat)
+		
+		fullDat = self.dat*4
+		
+		fullColInds = np.array(self.colInds*4)
+		
+		fullRowPtr = np.zeros( 4*self.N + 1 )
+		fullRowPtr[:self.N+1] = self.rowPtr[:self.N+1]
+		
+		for i in range(1,4):
+			fullColInds[i*nnz:(i+1)*nnz] += i*self.N
+			fullRowPtr[ i*self.N+1 : (i+1)*self.N+1 ] = self.rowPtr[1:] + fullRowPtr[i*self.N]
+		
+		return csr_matrix((fullDat,fullColInds,fullRowPtr), shape=(4*self.N,4*self.N))
 
 
 # VERIFIED UP TO HERE
@@ -353,18 +371,17 @@ def makeStiffnessMatrix():
 	builder = spMatBuilder(nNodes)
 	
 	for elem in range(nElem):
-		for i in range(DIMENSION):
-			for j in range(DIMENSION):
+		for i in range(DIMENSION+1):
+			for j in range(DIMENSION+1):
 				vert1 = ElemVertInds[elem,i]
 				vert2 = ElemVertInds[elem,j]
 				# TODO consider normalizing gradients to emphasize averaging term, not true Laplacian
-				grad1 = basisCoeffs[vert1,:DIMENSION] 
-				grad2 = basisCoeffs[vert2,:DIMENSION]
+				grad1 = basisCoeffs[elem,:DIMENSION,i] 
+				grad2 = basisCoeffs[elem,:DIMENSION,j]
 				
 				val = Areas[elem]*grad1.dot(grad2)
 				builder.addEntry(vert1,vert2,val)
 
-	builder.sort()
 	
 	return builder
 
@@ -373,8 +390,8 @@ def makeMassMatrix():
 	builder = spMatBuilder(nNodes)
 	
 	for elem in range(nElem):
-		for i in range(DIMENSION):
-			for j in range(DIMENSION):
+		for i in range(DIMENSION+1):
+			for j in range(DIMENSION+1):
 				vert1 = ElemVertInds[elem,i]
 				vert2 = ElemVertInds[elem,j]
 				
@@ -384,7 +401,6 @@ def makeMassMatrix():
 				val = Areas[elem]*val/12.0
 				builder.addEntry(vert1,vert2,val)
 
-	builder.sort()
 	
 	return builder
 
@@ -395,12 +411,12 @@ def makeMixedMatrices():
 	builder2 = spMatBuilder(nNodes)
 	
 	for elem in range(nElem):
-		for i in range(DIMENSION):
-			for j in range(DIMENSION):
+		for i in range(DIMENSION+1):
+			for j in range(DIMENSION+1):
 				vert1 = ElemVertInds[elem,i]
 				vert2 = ElemVertInds[elem,j]
 				
-				grad1 = basisCoeffs[vert1,:DIMENSION]
+				grad1 = basisCoeffs[elem,:DIMENSION,i] 
 				
 				val1 = Areas[elem]*grad1[0]/3.0
 				val2 = Areas[elem]*grad1[1]/3.0
@@ -408,8 +424,6 @@ def makeMixedMatrices():
 				builder1.addEntry(vert1,vert2,val1)
 				builder2.addEntry(vert1,vert2,val2)
 
-	builder1.sort()
-	builder2.sort()
 	
 	return builder1, builder2
 
