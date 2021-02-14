@@ -37,13 +37,19 @@ def df12dU(rho,v1,v2,en):
     numEntries = 4*4*numNodes
     
     rows = np.arange(0,numEntries+1,4)
-    cols = np.tile( np.arange(4), 4*numNodes) + np.tile( np.arange(numNodes), 4)
+    
+    cols = np.tile( np.arange(4), 4*numNodes)
+    cols = cols.reshape([-1,4])
+    cols += np.tile( np.arange(numNodes), 4).reshape([-1,1])
+    cols = cols.reshape([-1])
+
+
     vals1 = np.column_stack([df1rho,df1v1,df1v2,df1E]).reshape([-1])
     vals2 = np.column_stack([df2rho,df2v1,df2v2,df2E]).reshape([-1])
     
     
-    df1dU = csr_matrix( (vals1,rows,cols), shape=(4*numNodes, 4*numNodes) )
-    df2dU = csr_matrix( (vals2,rows,cols), shape=(4*numNodes, 4*numNodes) )
+    df1dU = csr_matrix( (vals1,cols,rows), shape=(4*numNodes, 4*numNodes) )
+    df2dU = csr_matrix( (vals2,cols,rows), shape=(4*numNodes, 4*numNodes) )
     
     return df1dU, df2dU
 
@@ -64,14 +70,14 @@ def dfAll(rho,v1,v2,en):
     
     df1_rho = np.column_stack([v1, rho, allZero, allZero])
     df1_v1 = np.column_stack([v1*v1, 2*rho*v1, allZero, allZero ]) + dP
-    df1_v2 = np.column_stack([v2*v1, rho*v2, rho*v1, allZero]) + dP
-    df1_E = np.column_stack([allZero, (rho*E+P), allZero, allZero]) + v1*( np.column_stack([E, allZero, allZero, allZero]) + rho*dE + dP )
+    df1_v2 = np.column_stack([v2*v1, rho*v2, rho*v1, allZero])
+    df1_E = np.column_stack([allZero, (rho*E+P), allZero, allZero]) + v1.reshape([-1,1])*( np.column_stack([E, allZero, allZero, allZero]) + rho.reshape([-1,1])*dE + dP )
     
     
     df2_rho = np.column_stack([v2, allZero, rho, allZero])
-    df2_v1 = np.column_stack([v1*v2, rho*v2, rho*v1, allZero ]) + dP
+    df2_v1 = np.column_stack([v1*v2, rho*v2, rho*v1, allZero ])
     df2_v2 = np.column_stack([v2*v2, allZero, 2*rho*v2, allZero ]) + dP
-    df2_E = np.column_stack([allZero, allZero, (rho*E+P), allZero]) + v2*( np.column_stack([E, allZero, allZero, allZero]) + rho*dE + dP ) 
+    df2_E = np.column_stack([allZero, allZero, (rho*E+P), allZero]) + v2.reshape([-1,1])*( np.column_stack([E, allZero, allZero, allZero]) + rho.reshape([-1,1])*dE + dP ) 
     
     
 
@@ -104,11 +110,11 @@ def fAll(rho,v1,v2,en):
 
     f1_rho = rho*v1
     f1_v1 = rho*v1*v1 + P
-    f1_v2 = rho*v2*v1 + P
+    f1_v2 = rho*v2*v1
     f1_E = (rho*E + P)*v1 
     
     f2_rho = rho*v2
-    f2_v1 = rho*v1*v2 + P
+    f2_v1 = rho*v1*v2
     f2_v2 = rho*v2*v2 + P
     f2_E = (rho*E + P)*v2 
     
