@@ -73,10 +73,6 @@ for i in range(NUM_VARS):
 	M1[outerIndices+i*MS.nNodes,:] = 0
 	M2[outerIndices+i*MS.nNodes,:] = 0
 
-## Zero out operator entries for V2 at the body
-#MM[v2Indices[bodyIndices],:] = 0
-#M1[v2Indices[bodyIndices],:] = 0
-#M2[v2Indices[bodyIndices],:] = 0
 
 MM = MM.tocsr()
 M1 = M1.tocsr()
@@ -90,9 +86,6 @@ U[v1Indices] = Vinf[0]
 U[v2Indices] = Vinf[1]
 U[enIndices] = en_inf
 
-# Set V2=0 at the body
-#U[v1Indices[bodyIndices]] = 0
-#U[v2Indices[bodyIndices]] = 0
 
 # Printing inital Solution
 MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], 0)
@@ -121,15 +114,7 @@ for it in range(1,numIts+1):
 		for j in range(len(outerIndices)):
 			DFDU[ outerIndices[j]+i*MS.nNodes, outerIndices[j]+i*MS.nNodes ] = 1
 
-#	# Enforce no penetration
-#	for i in range(len(bodyIndices)):
-#		DFDU[ v2Indices[bodyIndices[i]], v1Indices[bodyIndices[i]] ] = MS.bodyNodeNormals[i,0]
-#		DFDU[ v2Indices[bodyIndices[i]], v2Indices[bodyIndices[i]] ] = MS.bodyNodeNormals[i,1]
-	
-#	# Enforce no Slip
-#	for i in range(len(bodyIndices)):
-#		DFDU[ v1Indices[bodyIndices[i]], v1Indices[bodyIndices[i]] ] = 1
-#		DFDU[ v2Indices[bodyIndices[i]], v2Indices[bodyIndices[i]] ] = 1
+
 	
 	DFDU = DFDU.tocsr()
 
