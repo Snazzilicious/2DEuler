@@ -54,7 +54,7 @@ def parseMesh(filename):
 	nElem = int(line[-1])
 
 	#get indices of element vertices
-	ElemVertInds = np.zeros([nElem,DIMENSION+1]).astype(int)
+	ElemVertInds = np.zeros([nElem,DIMENSION+1], dtype=int)
 	for i in range(nElem):
 		line = meshFile.readline().split()
 		for j in range(DIMENSION+1):
@@ -91,7 +91,7 @@ def parseMesh(filename):
 	nGroups = int(line[-1])
 
 
-	groupSizes = np.zeros(nGroups).astype(int)
+	groupSizes = np.zeros(nGroups, dtype=int)
 	groupNames = ["" for _ in range(nGroups)]
 	groupMembers = [[] for _ in range(nGroups)]
 
@@ -136,7 +136,7 @@ def makeGridFile(vertexIndices, vertexCoords, filename):
 	vertices3D = np.zeros([numVertices,3])
 	vertices3D[:,:2] = vertexCoords[:,:]
 	
-	cellData = 3*np.ones([numCells,4]).astype(int)
+	cellData = 3*np.ones([numCells,4], dtype=int)
 	cellData[:,1:] = vertexIndices[:,:]
 	
 	f = open(filename,'w')
@@ -303,7 +303,7 @@ class spMatBuilder:
 	def __init__(self, N):
 		self.N = N
 		self.dat=[]
-		self.rowPtr=np.zeros(N+1).astype(int)
+		self.rowPtr=np.zeros(N+1, dtype=int)
 		self.colInds = []
 		
 	def addEntry(self,i,j,val):
@@ -426,7 +426,7 @@ def makeMixedMatrices():
 
 	# Boundary terms at the surface of the object
 	GID = groupNames.index( 'Body' )	
-	normal = np.zeros([2])
+	normal = np.zeros([DIMENSION])
 	for elem in range(nElem):
 		# see which nodes belong to the body
 		bodyNodes = [ ElemVertInds[elem,i] in groupMembers[GID] for i in range(DIMENSION+1) ]
@@ -495,7 +495,7 @@ def getBodyOutwardNormals():
 	
 	bodyNodeNormals = np.zeros([len(groupMembers[GID]),DIMENSION])
 	
-	normal = np.zeros([2])
+	normal = np.zeros([DIMENSION])
 	
 	for elem in range(nElem):
 		# see which nodes belong to the body

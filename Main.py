@@ -42,10 +42,10 @@ en_inf = ( 1.0 / ( FF.gamma*(FF.gamma-1)*M_inf*M_inf ) )
 
 
 # Shortucts to Variables
-rhoIndices = np.arange(MS.nNodes).astype(int)
-v1Indices=np.arange(MS.nNodes).astype(int) + MS.nNodes
-v2Indices=np.arange(MS.nNodes).astype(int) + 2*MS.nNodes
-enIndices=np.arange(MS.nNodes).astype(int) + 3*MS.nNodes
+rhoIndices = np.arange(MS.nNodes)
+v1Indices=np.arange(MS.nNodes) + MS.nNodes
+v2Indices=np.arange(MS.nNodes) + 2*MS.nNodes
+enIndices=np.arange(MS.nNodes) + 3*MS.nNodes
 
 outerIndices = []
 for name in ['Inflow', 'Outflow', 'Top', 'Bottom']:
@@ -62,7 +62,7 @@ nBodyNodes = len(bodyIndices)
 # Selecting which direction to enforce no penetration in
 whichDir = np.argmax(np.abs(MS.bodyNodeNormals),axis=1)
 
-bodyBCInds = np.zeros(nBodyNodes).astype(int)
+bodyBCInds = np.zeros(nBodyNodes, dtype=int)
 bodyBCInds[ whichDir==0 ] = v1Indices[ bodyIndices[whichDir==0] ]
 bodyBCInds[ whichDir==1 ] = v2Indices[ bodyIndices[whichDir==1] ]
 
