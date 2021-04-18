@@ -3,6 +3,7 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 import sys
 import importlib
+from time import ctime
 
 if 'MeshStructs' in sys.modules:
 	import MeshStructs as MS
@@ -18,13 +19,14 @@ else:
 
 
 """ Set Control Variables """
-visc = 1.0
+visc = 75.0
 numIts = 10
 numSubIts = 10
 NUM_VARS = 4
 
 # Pick a mesh file
 filename = "Mesh/2DCircle.su2"
+filename = "Mesh/FF1.su2"
 
 # Load in the Mesh
 print("Loading the Mesh", flush=True)
@@ -32,7 +34,7 @@ MS.parseMesh(filename)
 
 
 """ Set free stream conditions """
-M_inf = 1.25
+M_inf = 0.2
 AoA = 0*np.pi/180.0
 
 # don't change these
@@ -119,6 +121,7 @@ def adjustBodyVelocity(U,it):
 
 
 print("Beginning Main Loop", flush=True)
+print(ctime())
 #for it in range(1,numIts+1):
 for it in range(1,numIts+1):
 	
@@ -136,7 +139,7 @@ for it in range(1,numIts+1):
 		if err > 1e9 :
 			print("Blew Up!")
 			break
-		if err < 1e-9 :
+		if err < 1e-5 :
 			print("Converged")
 			break
 	
@@ -159,11 +162,17 @@ for it in range(1,numIts+1):
 		del_U = spsolve(DFDU, -F)
 		U += del_U
 
-	# Printing Solution
-	MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], printTag)
-	printTag += 1
+		# Printing Solution
+		MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], printTag)
+		printTag += 1
 	
-	if err > 1e9 or err < 1e-9 :
+	if err > 1e9 :
 		break
 
-print(np.linalg.norm(F))
+print("Finished Main Loop with error:", np.linalg.norm(F))
+print(ctime())
+
+#print("Minimizing Viscosity")
+
+
+
