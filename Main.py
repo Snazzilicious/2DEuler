@@ -24,6 +24,7 @@ visc = 75.0
 numIts = 10
 numSubIts = 10
 NUM_VARS = 4
+USE_AVG_AS_VISC = True
 
 # Pick a mesh file
 filename = "Mesh/2DCircle.su2"
@@ -72,13 +73,15 @@ bodyBCInds[ whichDir==1 ] = v2Indices[ bodyIndices[whichDir==1] ]
 
 
 # get Finite Element operators
-#GradGradBuilder = MS.makeStiffnessMatrix()
-AvgBuilder = MS.makeAvgMatrix()
-Mixed1Builder, Mixed2Builder = MS.makeMixedMatrices()
+if USE_AVG_AS_VISC:
+	AvgBuilder = MS.makeAvgMatrix()
+	MM = speye(NUM_VARS*MS.nNodes, format='csr') - AvgBuilder.getFullSparse()
+	MM = MM.tolil()
+else:
+	GradGradBuilder = MS.makeStiffnessMatrix()
+	MM = GradGradBuilder.getFullSparse().tolil()
 
-#MM = GradGradBuilder.getFullSparse().tolil()
-MM = speye(4*MS.nNodes, format='csr') - AvgBuilder.getFullSparse()
-MM = MM.tolil()
+Mixed1Builder, Mixed2Builder = MS.makeMixedMatrices()
 M1 = Mixed1Builder.getFullSparse().tolil()
 M2 = Mixed2Builder.getFullSparse().tolil()
 
