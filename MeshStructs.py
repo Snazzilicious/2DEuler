@@ -20,11 +20,7 @@ basisCoeffs = None #[element, xyc, vertex]
 
 bodyNodeNormals = None
 
-# form stiffness matrix
-
-# form mass matrix
-
-# form mixed matrix
+funcVolumes = None
 
 """ Mesh Loading Routines """
 
@@ -43,6 +39,7 @@ def parseMesh(filename):
 	global basisCoeffs
 	global groupNames
 	global groupMembers
+	global funcVolumes
 
 	meshFile = open(filename,'r')
 	
@@ -122,6 +119,8 @@ def parseMesh(filename):
 	c2s = VertCoords[ ElemVertInds[:,2], : ]
 	
 	Areas = getElemAreas(c0s, c1s, c2s)
+	
+	funcVolumes = basisFuncVolumes()
 	
 	basisCoeffs = get2DBasisCoeffs(c0s, c1s, c2s) #[element, xyc, vertex]
 	
@@ -288,11 +287,20 @@ def getIntegPtsWt(verts,levels):
 def integrateHatFunction(elem, vert, nlvls): # 2 levels should do it
 	# vert is 0, 1, or 2
 	coords = np.stack([c0s[elem,:],c1s[elem,:],c2s[elem,:]])
-	pts, w = getIntegPtsWt( coords, nlvls )
+	intPts, w = getIntegPtsWt( coords, nlvls )
 	
-	return w*np.sum( intPts.dot(basisCoeffs[elem,:DIMENSION,0]) + basisCoeffs[elem,DIMENSION,vert] )
+	return w*np.sum( intPts.dot(basisCoeffs[elem,:DIMENSION,vert]) + basisCoeffs[elem,DIMENSION,vert] )
+
+
+def basisFuncVolumes():
+	volumes = np.zeros( nNodes )
 	
+	for elem in range(nElem):
+		for i in range(DIMENSION+1):
+			volumes[ ElemVertInds[elem,i] ] += Areas[elem]/3.0
 	
+	return volumes
+
 
 """ End 2D Integration Routines """
 
@@ -351,15 +359,6 @@ class spMatBuilder:
 
 
 # VERIFIED UP TO HERE
-
-def basisFuncVolumes():
-	volumes = np.zeros( nNodes )
-	
-	for elem in range(nElem):
-		for i in range(DIMENSION+1):
-			volumes[ ElemVertInds[elem,i] ] += Areas[elem]/3.0
-	
-	return volumes
 
 def makeStiffnessMatrix():
 	

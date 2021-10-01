@@ -84,7 +84,7 @@ for i in range(NUM_VARS):
 	M1[outerIndices+i*MS.nNodes,:] = 0
 	M2[outerIndices+i*MS.nNodes,:] = 0
 
-# Zero out equaitons for no penetration conditions at object
+# Zero out equations for no penetration conditions at object
 MM[bodyBCInds,:] = 0
 M1[bodyBCInds,:] = 0
 M2[bodyBCInds,:] = 0
