@@ -162,9 +162,9 @@ for it in range(1,numIts+1):
 		del_U = spsolve(DFDU, -F)
 		U += del_U
 
-		# Printing Solution
-		MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], printTag)
-		printTag += 1
+	# Printing Solution
+	MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], printTag)
+	printTag += 1
 	
 	if err > 1e9 :
 		break
@@ -172,7 +172,63 @@ for it in range(1,numIts+1):
 print("Finished Main Loop with error:", np.linalg.norm(F))
 print(ctime())
 
-#print("Minimizing Viscosity")
 
 
 
+print("Minimizing Viscosity")
+bestU = U.copy()
+viscMax = visc
+viscMin = 0.0
+visc = np.mean([viscMin,viscMax])
+for it in range(numIts):
+	
+	for subIt in range(numSubIts):
+		# Compute flux functions at each node
+		F1, F2 = FF.F12(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices])
+		# Compute Jacobian of each flux function
+		DF1DU, DF2DU = FF.df12dU(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices])
+
+		# Compute Residual
+		F = (M1 @ F1) + (M2 @ F2) - visc*( MM @ U )
+		err = np.linalg.norm(F)
+		if err > 1e9 :
+			print("Blew Up!")
+			break
+		if err < 1e-5 :
+			print("Converged")
+			break
+	
+		# Compute Jacobian of Residual
+		DFDU = (M1 @ DF1DU) + (M2 @ DF2DU) - visc*MM
+
+		# Enforce Boundary Conditions
+		DFDU = DFDU.tolil()
+		for i in range(NUM_VARS):
+			for j in range(len(outerIndices)):
+				DFDU[ outerIndices[j]+i*MS.nNodes, outerIndices[j]+i*MS.nNodes ] = 1
+
+		# Enforce No Penetration
+		for i in range(nBodyNodes):
+			DFDU[ bodyBCInds[i], v1Indices[bodyIndices[i]] ] = MS.bodyNodeNormals[i,0]
+			DFDU[ bodyBCInds[i], v2Indices[bodyIndices[i]] ] = MS.bodyNodeNormals[i,1]
+	
+		DFDU = DFDU.tocsr()
+
+		del_U = spsolve(DFDU, -F)
+		U += del_U
+
+#		# Printing Solution
+#		MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], printTag)
+#		printTag += 1
+
+	if (err < 1e-5):
+		viscMax = visc
+		bestU = U.copy()
+	else:
+		viscMin = visc
+		U = bestU.copy()
+	visc = np.mean([viscMin,viscMax])
+
+	# Printing Solution
+	MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], printTag)
+	printTag += 1
