@@ -1,0 +1,24 @@
+
+
+1. Test the flux functions and derivatives
+2. Create Full operator Matrices - done, but untested
+3. Test matrix construction throroughly
+4. Implement minimize viscosity
+
+Notes:
+1. Could use COO matrix to build operators
+2. Maybe don't have nodes at the tips of the airfoil to avoid weirdness
+
+
+Done
+-Write Main
+-Insert BC's into the matrix
+	a. decay n.dot( v ) instead of just v2 at the surface
+	b. Does setting entries to zero delete them from the structure? - yes
+-Eliminate the equation corresponding to the direction with which the dot product with normal is greatest
+	-So if normal dot e1 is greater than normal dot e2, eliminate the v1 equation
+-Find boundary nodes 
+	a. At surface need their connected nodes to compute normals - done
+-Form/construct sparse matrices for solve
+	a. use '@' to multiply 
+	b. have to import scipy.sparse explicitly
