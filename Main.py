@@ -1,5 +1,6 @@
 
 import numpy as np
+from scipy.sparse import identity as speye
 from scipy.sparse.linalg import spsolve
 import sys
 import importlib
@@ -71,10 +72,13 @@ bodyBCInds[ whichDir==1 ] = v2Indices[ bodyIndices[whichDir==1] ]
 
 
 # get Finite Element operators
-GradGradBuilder = MS.makeStiffnessMatrix()
+#GradGradBuilder = MS.makeStiffnessMatrix()
+AvgBuilder = MS.makeAvgMatrix()
 Mixed1Builder, Mixed2Builder = MS.makeMixedMatrices()
 
-MM = GradGradBuilder.getFullSparse().tolil()
+#MM = GradGradBuilder.getFullSparse().tolil()
+MM = speye(4*MS.nNodes, format='csr') - AvgBuilder.getFullSparse()
+MM = MM.tolil()
 M1 = Mixed1Builder.getFullSparse().tolil()
 M2 = Mixed2Builder.getFullSparse().tolil()
 

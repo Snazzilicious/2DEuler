@@ -325,6 +325,10 @@ class spMatBuilder:
 	def makeCOO(self):
 			self.coo = coo_matrix( (self.dat, (self.row,self.col)), shape=(self.N,self.N) )
 			self.coo.sum_duplicates()
+			
+			self.dat = self.coo.data.tolist()
+			self.row = self.coo.row.tolist()
+			self.col = self.coo.col.tolist()
 	
 	def getDense(self):
 		if self.coo is None:
@@ -379,6 +383,7 @@ def makeStiffnessMatrix():
 	
 	return builder
 
+
 def makeMassMatrix():
 	
 	builder = spMatBuilder(nNodes)
@@ -395,6 +400,18 @@ def makeMassMatrix():
 				val = Areas[elem]*val/12.0
 				builder.addEntry(vert1,vert2,val)
 
+	
+	return builder
+
+
+def makeAvgMatrix():
+	builder = makeMassMatrix()
+	builder.makeCOO()
+	
+	for i in range(len(builder.dat)):
+		builder.dat[i] /= funcVolumes[builder.row[i]]
+	
+	builder.makeCOO()
 	
 	return builder
 
