@@ -298,70 +298,56 @@ def integrateHatFunction(elem, vert, nlvls): # 2 levels should do it
 
 """ Sparse Matrix Construction Routines and Structures """
 
-
+from scipy.sparse import coo_matrix, csr_matrix
 class spMatBuilder:
 	def __init__(self, N):
 		self.N = N
-		self.dat=[]
-		self.rowPtr=np.zeros(N+1, dtype=int)
-		self.colInds = []
+		self.dat = []
+		self.row = []
+		self.col = []
+		
+		self.coo = None
 		
 	def addEntry(self,i,j,val):
 		
-		if self.rowPtr[i] == self.rowPtr[i+1]:
-			self.colInds.insert(self.rowPtr[i],j)
-			self.dat.insert(self.rowPtr[i],val)
-			self.rowPtr[i+1:] += 1
-		else:
+		self.row.append(i)
+		self.col.append(j)
+		self.dat.append(val)
 		
-			done = False
-			# See if the indices already exits
-			for col in range(self.rowPtr[i],self.rowPtr[i+1]):
-				if self.colInds[col] == j:
-					self.dat[col] += val
-					done = True
-			if not done:
-				# see if should be the last column
-				if j > self.colInds[self.rowPtr[i+1]-1]:
-					self.colInds.insert(self.rowPtr[i+1],j)
-					self.dat.insert(self.rowPtr[i+1],val)
-				else:
-					for col in range(self.rowPtr[i], self.rowPtr[i+1]):
-						if j < self.colInds[col]:
-							self.colInds.insert(col,j)
-							self.dat.insert(col,val)
-							break
-				self.rowPtr[i+1:] += 1
-		
+	def makeCOO(self):
+			self.coo = coo_matrix( (self.dat, (self.row,self.col)), shape=(self.N,self.N) )
+			self.coo.sum_duplicates()
 	
 	def getDense(self):
-		res = np.zeros([self.N,self.N])
-		for row in range(self.N):
-			for j in range(self.rowPtr[row], self.rowPtr[row+1]):
-				res[ row, self.colInds[j] ] = self.dat[j]
-		return res
+		if self.coo is None:
+			self.makeCOO()
+		return self.coo.toarray()
 	
 	def getSparse(self):
-		from scipy.sparse import csr_matrix
-		return csr_matrix((self.dat,self.colInds,self.rowPtr), shape=(self.N,self.N))
+		if self.coo is None:
+			self.makeCOO()
+		return self.coo.tocsr()
 	
 	def getFullSparse(self):
+		if self.coo is None:
+			self.makeCOO()
+		
 		# 4 is b/c 4 variables
-		from scipy.sparse import csr_matrix
-		nnz = len(self.dat)
 		
-		fullDat = self.dat*4
-		
-		fullColInds = np.array(self.colInds*4)
-		
-		fullRowPtr = np.zeros( 4*self.N + 1 )
-		fullRowPtr[:self.N+1] = self.rowPtr[:self.N+1]
+		allDats = [self.coo.data]
+		allRows = [self.coo.row]
+		allCols = [self.coo.col]
 		
 		for i in range(1,4):
-			fullColInds[i*nnz:(i+1)*nnz] += i*self.N
-			fullRowPtr[ i*self.N+1 : (i+1)*self.N+1 ] = self.rowPtr[1:] + fullRowPtr[i*self.N]
+			allDats.append( allDats[-1] )
+			allRows.append( allRows[-1] + self.N )
+			allCols.append( allCols[-1] + self.N )
 		
-		return csr_matrix((fullDat,fullColInds,fullRowPtr), shape=(4*self.N,4*self.N))
+		allDats = np.concatenate( allDats )
+		allRows = np.concatenate( allRows )
+		allCols = np.concatenate( allCols )
+		
+		return coo_matrix( (allDats, (allRows,allCols)), shape=(4*self.N,4*self.N) ).tocsr()
 
 
 # VERIFIED UP TO HERE

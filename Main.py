@@ -26,7 +26,7 @@ NUM_VARS = 4
 
 # Pick a mesh file
 filename = "Mesh/2DCircle.su2"
-filename = "Mesh/FF1.su2"
+#filename = "Mesh/FF1.su2"
 
 # Load in the Mesh
 print("Loading the Mesh", flush=True)
