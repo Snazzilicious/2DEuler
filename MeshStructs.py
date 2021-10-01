@@ -366,6 +366,15 @@ class spMatBuilder:
 
 # VERIFIED UP TO HERE
 
+def basisFuncVolumes():
+	volumes = np.zeros( nNodes )
+	
+	for elem in range(nElem):
+		for i in range(DIMENSION+1):
+			volumes[ ElemVertInds[elem,i] ] += Areas[elem]/3.0
+	
+	return volumes
+
 def makeStiffnessMatrix():
 	
 	builder = spMatBuilder(nNodes)
