@@ -18,6 +18,12 @@ if 'FluxFunctions' in sys.modules:
 else:
 	import FluxFunctions as FF
 
+if 'MeshRefine' in sys.modules:
+	import MeshRefine as MR
+	importlib.reload(MR)
+else:
+	import MeshRefine as MR
+
 
 """ Set Control Variables """
 visc = 75.0
@@ -31,7 +37,7 @@ filename = "Mesh/2DCircle.su2"
 #filename = "Mesh/FF1.su2"
 
 """ Set free stream conditions """
-M_inf = 2.5
+M_inf = 1.4
 AoA = 0*np.pi/180.0
 
 # don't change these
@@ -167,7 +173,6 @@ def NewtonRefine(U):
 
 print("Beginning Main Loop", flush=True)
 print(ctime())
-#for it in range(1,numIts+1):
 for it in range(1,numIts+1):
 	
 	adjustBodyVelocity(U,it)
@@ -210,6 +215,15 @@ for it in range(numIts):
 
 print("Final Viscosity Range", viscMin, viscMax)
 
-#Determine which elements have the greatest slope
 
+# Determine which elements have the greatest slope
+maxDiffs = MR.SortingList()
+for elem in range(MS.nElem):
+	rhoDiff = max( U[ MS.ElemVertInds[elem,:] ] ) - min( U[ MS.ElemVertInds[elem,:] ] )
+	v1Diff = max( U[v1Indices[MS.ElemVertInds[elem,:]]] ) - min( U[v1Indices[MS.ElemVertInds[elem,:]]] )
+	v2Diff = max( U[v2Indices[MS.ElemVertInds[elem,:]]] ) - min( U[v2Indices[MS.ElemVertInds[elem,:]]] )
+	enDiff = max( U[enIndices[MS.ElemVertInds[elem,:]]] ) - min( U[enIndices[MS.ElemVertInds[elem,:]]] )
+
+	maxDiffs.push( elem, rhoDiff+v1Diff+v2Diff+enDiff )
+	
 
