@@ -36,7 +36,7 @@ MS.parseMesh(filename)
 
 
 """ Set free stream conditions """
-M_inf = 0.2
+M_inf = 2.5
 AoA = 0*np.pi/180.0
 
 # don't change these
@@ -108,10 +108,10 @@ U[v1Indices] = Vinf[0]
 U[v2Indices] = Vinf[1]
 U[enIndices] = en_inf
 
-
 # Printing inital Solution
 MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], 0)
 printTag = 1
+
 
 
 def adjustBodyVelocity(U,it):
@@ -196,7 +196,6 @@ for it in range(numIts):
 	
 	err = NewtonRefine(U)
 
-
 	if (err < 1e-5):
 		viscMax = visc
 		bestU = U.copy()
@@ -208,3 +207,9 @@ for it in range(numIts):
 	# Printing Solution
 	MS.printResults(U[rhoIndices], U[v1Indices], U[v2Indices], U[enIndices], printTag)
 	printTag += 1
+
+print("Final Viscosity Range", viscMin, viscMax)
+
+#Determine which elements have the greatest slope
+
+

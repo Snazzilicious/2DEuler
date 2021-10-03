@@ -91,10 +91,6 @@ def F12(rho,v1,v2,en):
     f1_rho,f1_v1,f1_v2,f1_E,\
         f2_rho,f2_v1,f2_v2,f2_E = fAll(rho,v1,v2,en)
     
-#    F1 = np.array([f1_rho, f1_v1, f1_v2, f1_V3, f1_E]).reshape(-1,1)
-#    F2 = np.array([f2_rho, f2_v1, f2_v2, f2_V3, f2_E]).reshape(-1,1)
-#    F3 = np.array([f3_rho, f3_v1, f3_v2, f3_V3, f3_E]).reshape(-1,1)
-    
     F1 = np.concatenate([f1_rho, f1_v1, f1_v2, f1_E])
     F2 = np.concatenate([f2_rho, f2_v1, f2_v2, f2_E])
     
