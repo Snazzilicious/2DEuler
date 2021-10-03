@@ -30,11 +30,6 @@ USE_AVG_AS_VISC = True
 filename = "Mesh/2DCircle.su2"
 #filename = "Mesh/FF1.su2"
 
-# Load in the Mesh
-print("Loading the Mesh", flush=True)
-MS.parseMesh(filename)
-
-
 """ Set free stream conditions """
 M_inf = 2.5
 AoA = 0*np.pi/180.0
@@ -45,7 +40,12 @@ en_inf = ( 1.0 / ( FF.gamma*(FF.gamma-1)*M_inf*M_inf ) )
 
 
 
-# Shortucts to Variables
+# Load in the Mesh
+print("Loading the Mesh", flush=True)
+MS.parseMesh(filename)
+
+
+""" Shortucts to Variables """
 rhoIndices = np.arange(MS.nNodes)
 v1Indices=np.arange(MS.nNodes) + MS.nNodes
 v2Indices=np.arange(MS.nNodes) + 2*MS.nNodes
@@ -72,7 +72,7 @@ bodyBCInds[ whichDir==1 ] = v2Indices[ bodyIndices[whichDir==1] ]
 
 
 
-# get Finite Element operators
+""" Get Finite Element operators """
 if USE_AVG_AS_VISC:
 	AvgBuilder = MS.makeAvgMatrix()
 	MM = speye(NUM_VARS*MS.nNodes, format='csr') - AvgBuilder.getFullSparse()
@@ -102,7 +102,7 @@ M2 = M2.tocsr()
 
 
 
-# Set initial guess
+""" Set initial guess """
 U = np.ones(NUM_VARS*MS.nNodes)
 U[v1Indices] = Vinf[0]
 U[v2Indices] = Vinf[1]
